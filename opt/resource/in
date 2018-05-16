@@ -1,0 +1,78 @@
+#!/bin/bash
+
+set -e
+
+exec 3>&1 # make stdout available as fd 3 for the result
+exec 1>&2 # redirect all output to stderr for logging
+
+echo $(dirname $0)
+ls $(dirname $0)
+
+source $(dirname $0)/common.sh
+
+destination=$1
+
+payload=$(mktemp $TMPDIR/concourse-serverless-resource.XXXXXX)
+cat > $payload <&0
+
+deploy=$(jq -r '.deploy // false' < $payload)
+remove=$(jq -r '.remove // false' < $payload)
+stage=$(jq -r '.stage // ""' < $payload)
+
+if [ -z $stage ]; then
+    echo "invalid params (missing stage):" >&2
+    cat $payload >&2
+    exit 1
+fi
+
+if [ $deploy = "false" ] && [ $remove = "false" ]; then
+    echo "invalid params (either deploy or remove must be true):" >&2
+    cat $payload >&2
+    exit 1
+fi
+
+serverless_dir=$(jq -r '.serverless // ""' < $payload)
+
+if [ -z $serverless_dir ]; then
+    echo "invalid params (must set serverless): " >&2
+    cat $payload >&2
+    exit 1
+fi
+
+cd $serverless_dir
+
+set_serverless_credentials $payload
+
+region=$(jq -r '.region // ""' < $payload)
+npm_install=$(jq -r '.npm_install // false' < $payload)
+npm_build=$(jq -r '.npm_build // false' < $payload)
+npm_prefix=$(jq -r '.npm_prefix // ""' < $payload)
+
+if [ $npm_install = "true" ]; then
+    if [ -z $npm_prefix ]; then
+        npm install
+    else
+        npm install --prefix $npm_prefix
+    fi
+fi
+
+if [ $npm_build  = "true" ]; then
+        if [ -z $npm_prefix ]; then
+        npm build
+    else
+        npm build --prefix $npm_prefix
+    fi
+fi
+
+regionflag=""
+if [ ! -z $region ]; then
+    regionflag="--region $region"
+fi
+
+if [ $deploy = "true" ]; then
+    serverless deploy -v --stage $stage $regionflag
+fi
+
+if [ $remove = "true" ]; then
+    serverless remove -v --stage $stage $regionflag
+fi
