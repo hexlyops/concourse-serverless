@@ -5,4 +5,79 @@ set -e
 exec 3>&1 # make stdout available as fd 3 for the result
 exec 1>&2 # redirect all output to stderr for logging
 
-echo "No Op"
+source $(dirname $0)/common.sh
+
+destination=$1
+cd $destination
+
+payload=$(mktemp $TMPDIR/concourse-serverless-resource.XXXXXX)
+cat > $payload <&0
+
+params=$(jq -r '.params // ""' < $payload)
+source=$(jq -r '.source // ""' < $payload)
+
+deploy=$(echo $params | jq -r '.deploy // false')
+remove=$(echo $params | jq -r '.remove // false')
+stage=$(echo $params | jq -r '.stage // ""')
+
+if [ -z $stage ]; then
+    echo "invalid params (missing stage):" >&2
+    cat $params >&2
+    exit 1
+fi
+
+if [ $deploy = "false" ] && [ $remove = "false" ]; then
+    echo "invalid params (either deploy or remove must be true):" >&2
+    cat $params >&2
+    exit 1
+fi
+
+serverless_dir=$(echo $params | jq -r '.serverless // ""')
+
+if [ -z $serverless_dir ]; then
+    echo "invalid params (must set serverless): " >&2
+    cat $params >&2
+    exit 1
+fi
+
+cd $serverless_dir
+
+set_serverless_credentials "$source"
+
+region=$(echo $source | jq -r '.region_name // ""')
+npm_install=$(echo $params | jq -r '.npm_install // false')
+npm_build=$(echo $params | jq -r '.npm_build // false')
+npm_prefix=$(echo $params | jq -r '.npm_prefix // ""')
+
+echo "region: $region || npm_build: $npm_build || npm_install: $npm_install || npm_prefix: $npm_prefix"
+
+if [ $npm_install = "true" ]; then
+    if [ -z $npm_prefix ]; then
+        npm install
+    else
+        npm install --prefix $npm_prefix
+    fi
+fi
+
+if [ $npm_build  = "true" ]; then
+        if [ -z $npm_prefix ]; then
+        npm build
+    else
+        npm build --prefix $npm_prefix
+    fi
+fi
+
+regionflag=""
+if [ ! -z $region ]; then
+    regionflag="--region $region"
+fi
+
+if [ $deploy = "true" ]; then
+    serverless deploy -v --stage $stage $regionflag
+    jq -n '{"version": ""}'
+fi
+
+if [ $remove = "true" ]; then
+    serverless remove -v --stage $stage $regionflag
+    jq -n '{}'
+fi

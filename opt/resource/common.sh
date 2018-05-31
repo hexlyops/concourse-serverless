@@ -1,8 +1,8 @@
 export TMPDIR=${TMPDIR:-/tmp}
 
 set_serverless_credentials() {
-    local key=$(jq -r .aws_key < $1)
-    local secret=$(jq -r .aws_secret < $1)
+    local key=$(echo $1 | jq -r .access_key_id)
+    local secret=$(echo $1 | jq -r .secret_access_key)
 
-    serverless config credentials --provider aws --key key --secret secret
+    serverless config credentials --provider aws --key $key --secret $secret
 }
