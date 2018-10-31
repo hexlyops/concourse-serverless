@@ -32,17 +32,6 @@ if [ $deploy = "false" ] && [ $remove = "false" ]; then
     exit 1
 fi
 
-serverless_dir=$(echo $params | jq -r '.serverless // ""')
-
-if [ -z $serverless_dir ]; then
-    echo "invalid params (must set serverless): " >&2
-    cat $params >&2
-    exit 1
-fi
-
-cd $serverless_dir
-
-set_serverless_credentials "$source"
 
 region=$(echo $source | jq -r '.region_name // ""')
 npm_install=$(echo $params | jq -r '.npm_install // false')
@@ -66,6 +55,18 @@ if [ $npm_build  = "true" ]; then
         npm build --prefix $npm_prefix
     fi
 fi
+
+serverless_dir=$(echo $params | jq -r '.serverless // ""')
+
+if [ -z $serverless_dir ]; then
+    echo "invalid params (must set serverless): " >&2
+    cat $params >&2
+    exit 1
+fi
+
+cd $serverless_dir
+
+set_serverless_credentials "$source"
 
 regionflag=""
 if [ ! -z $region ]; then
