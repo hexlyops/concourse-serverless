@@ -1,5 +1,9 @@
 #!/bin/bash
-docker build . -t hexly/concourse-serverless:latest \
-               -t hexly/concourse-serverless:0.0.1 
-docker push hexly/concourse-serverless:latest 
-docker push hexly/concourse-serverless:0.0.1
+
+IMAGE=hexly/concourse-serverless
+VERSION=0.0.12
+
+docker build . -t $IMAGE:latest \
+               -t $IMAGE:$VERSION
+docker push $IMAGE:latest 
+docker push $IMAGE:$VERSION

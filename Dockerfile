@@ -1,8 +1,8 @@
-FROM node:9-alpine
+FROM node:10-alpine
 
 RUN mkdir -p /aws && \
-    apk -Uuv add python3 jq bash && \
-    rm /var/cache/apk/*
+  apk -Uuv add python3 jq git bash && \
+  rm /var/cache/apk/*
 
 COPY opt /opt
 RUN chmod +x /opt/resource/*

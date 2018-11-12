@@ -36,6 +36,8 @@ set -e
     npm_install=$(echo $params | jq -r '.npm_install // false')
     npm_build=$(echo $params | jq -r '.npm_build // false')
     npm_prefix=$(echo $params | jq -r '.npm_prefix // ""')
+    npm_ls=$(echo $params | jq -r '.npm_ls // false')
+    build_info=$(echo $params | jq -r '.build_info // false')
 
     # echo "region: $region || npm_build: $npm_build || npm_install: $npm_install || npm_prefix: $npm_prefix"
 
@@ -54,6 +56,7 @@ set -e
             npm build --prefix $npm_prefix
         fi
     fi
+    
 
     serverless_dir=$(echo $params | jq -r '.serverless // ""')
 
@@ -64,6 +67,30 @@ set -e
     fi
 
     cd $serverless_dir
+
+
+    if [ $build_info  = "true" ]; then
+        echo "Including build info to package.json"
+                    
+        # --arg rev $(git rev-parse --short head) \
+        # '.build = {} | .build.rev = $rev | .build.date = $ts | id = $bid | number = $bn | job = $job | pipeline = $pl ' package.json \
+
+        prefix='.'
+        if [ -z $npm_prefix ]; then
+            prefix="$npm_prefix"
+        fi
+        jq  --arg ts $(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+            --arg bid "$BUILD_ID" \
+            --arg bn "$BUILD_NAME" \
+            --arg job "$BUILD_JOB_NAME" \
+            --arg pl "$BUILD_PIPELINE_NAME" \
+            '.build = {} | .build.date = $ts | .build.id = $bid | .build.number = $bn | .build.job = $job | .build.pipeline = $pl ' "$prefix/package.json" \
+            > __package.json && mv __package.json package.json
+    fi
+
+    if [ $npm_ls = "true" ]; then
+        npm ls || true # true so that `npm ls` doesn't cause us to blow up
+    fi
 
     set_serverless_credentials "$source"
 
