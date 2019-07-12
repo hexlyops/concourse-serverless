@@ -1,7 +1,7 @@
 #!/bin/bash
 
 IMAGE=hexly/concourse-serverless
-VERSION=0.0.12
+VERSION=0.0.13
 
 docker build . -t $IMAGE:latest \
                -t $IMAGE:$VERSION

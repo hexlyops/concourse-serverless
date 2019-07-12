@@ -17,6 +17,7 @@ set -e
 
     deploy=$(echo $params | jq -r '.deploy // false')
     remove=$(echo $params | jq -r '.remove // false')
+    force=$(echo $params | jq -r '.force // false')
     stage=$(echo $params | jq -r '.stage // ""')
 
     if [ -z $stage ]; then
@@ -24,6 +25,7 @@ set -e
         cat $params >&2
         exit 1
     fi
+    
 
     if [ $deploy = "false" ] && [ $remove = "false" ]; then
         echo "invalid params (either deploy or remove must be true):" >&2
@@ -99,12 +101,17 @@ set -e
         regionflag="--region $region"
     fi
 
+    forceflag=""
+    if [ ! -z $force ]; then
+        forceflag="--force"
+    fi
+
     if [ $deploy = "true" ]; then
-        serverless deploy -v --stage $stage $regionflag
+        serverless deploy -v --stage $stage $regionflag $forceflag
     fi
 
     if [ $remove = "true" ]; then
-        serverless remove -v --stage $stage $regionflag
+        serverless remove -v --stage $stage $regionflag $forceflag
     fi
 
 } >&2
