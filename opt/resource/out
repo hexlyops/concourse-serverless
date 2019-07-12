@@ -17,6 +17,8 @@ set -e
 
     deploy=$(echo $params | jq -r '.deploy // false')
     remove=$(echo $params | jq -r '.remove // false')
+    gqlengine=$(echo $params | jq -r '.gqlengine // ""')
+    gqlenginekey=$(echo $params | jq -r '.gqlenginekey // ""')
     force=$(echo $params | jq -r '.force // false')
     stage=$(echo $params | jq -r '.stage // ""')
 
@@ -27,11 +29,11 @@ set -e
     fi
     
 
-    if [ $deploy = "false" ] && [ $remove = "false" ]; then
-        echo "invalid params (either deploy or remove must be true):" >&2
-        cat $params >&2
-        exit 1
-    fi
+    # if [ $deploy = "false" ] && [ $remove = "false" ] && [ -z $gqlengine ]; then
+    #     echo "invalid params (either deploy, remove, or gqlengine must be set):" >&2
+    #     cat $params >&2
+    #     exit 1
+    # fi
 
 
     region=$(echo $source | jq -r '.region_name // ""')
@@ -108,6 +110,12 @@ set -e
 
     if [ $deploy = "true" ]; then
         serverless deploy -v --stage $stage $regionflag $forceflag
+    fi
+
+    if [ ! -z $gqlengine ]; then
+        export ENGINE_API_KEY="$gqlenginekey"
+        echo "Pushing to Apollo Engine: $gqlengine"
+        npx apollo service:push --endpoint=$gqlengine
     fi
 
     if [ $remove = "true" ]; then
